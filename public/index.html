@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Confession</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div class="container">
+  <div class="toggle" onclick="toggleMode()">🌙 / ☀️</div>
+
+  <h2>💌 Confession Box</h2>
+  <div class="logo">Anonymous • Safe • Private</div>
+
+  <textarea id="msg" placeholder="Type your confession here..."></textarea>
+  <button onclick="send()">Send Confession</button>
+
+  <div class="footer">
+    Made with ❤️ for Instagram Confessions
+  </div>
+</div>
+
+<audio id="snd">
+  <source src="https://assets.mixkit.co/sfx/preview/mixkit-message-pop-alert-2354.mp3">
+</audio>
+
+<script>
+function send(){
+  if(!msg.value.trim()){
+    alert("Write something 😅");
+    return;
+  }
+  snd.play();
+  fetch("/confess",{
+    method:"POST",
+    headers:{ "Content-Type":"application/json" },
+    body: JSON.stringify({ message: msg.value })
+  })
+  .then(()=>{
+    msg.value="";
+    alert("Confession Sent ❤️");
+  });
+}
+
+function toggleMode(){
+  document.body.classList.toggle("light");
+}
+</script>
+
+</body>
+</html>
