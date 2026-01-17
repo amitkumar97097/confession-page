@@ -32,11 +32,11 @@
       font-size:13px;
     }
 
-    .count{
+    .stats{
       text-align:center;
-      margin-bottom:15px;
-      font-size:13px;
-      opacity:0.7;
+      margin-bottom:20px;
+      font-size:14px;
+      opacity:0.85;
     }
 
     .card{
@@ -45,7 +45,7 @@
       border-radius:16px;
       margin-bottom:14px;
       box-shadow:0 10px 25px rgba(0,0,0,0.5);
-      animation:fade 0.5s ease;
+      animation:fade 0.4s ease;
     }
 
     @keyframes fade{
@@ -77,6 +77,15 @@
       margin-top:8px;
     }
 
+    .actions{
+      margin-top:12px;
+      text-align:right;
+    }
+
+    .actions button{
+      background:#dc2626;
+    }
+
     .loading{
       text-align:center;
       opacity:0.7;
@@ -91,45 +100,61 @@
   <button onclick="logout()">Logout</button>
 </header>
 
-<div class="count" id="count">Loading confessions...</div>
-<div id="data" class="loading">⏳ Fetching data...</div>
+<div class="stats" id="stats">📈 Loading stats...</div>
+<div id="data" class="loading">⏳ Fetching confessions...</div>
 
 <script>
-/* 🔐 Login guard */
-if(localStorage.getItem("admin") !== "true"){
+/* 🔐 JWT Guard */
+const token = localStorage.getItem("token");
+if(!token){
   location.href = "/admin-login.html";
 }
 
 /* 🚪 Logout */
 function logout(){
-  localStorage.removeItem("admin");
+  localStorage.removeItem("token");
   location.href = "/admin-login.html";
 }
 
+/* 📊 Stats */
+fetch("/admin/stats",{
+  headers:{ Authorization:"Bearer "+token }
+})
+.then(r=>{
+  if(r.status===401||r.status===403) logout();
+  return r.json();
+})
+.then(d=>{
+  document.getElementById("stats").innerText =
+    `📊 Total Confessions: ${d.total}`;
+});
+
 /* 📡 Fetch confessions */
-fetch("/admin/confessions")
-.then(res => res.json())
-.then(list => {
+fetch("/admin/confessions",{
+  headers:{ Authorization:"Bearer "+token }
+})
+.then(res=>{
+  if(res.status===401||res.status===403) logout();
+  return res.json();
+})
+.then(list=>{
   const data = document.getElementById("data");
-  const count = document.getElementById("count");
 
   if(!list.length){
     data.innerHTML = "No confessions yet 😴";
-    count.innerText = "Total: 0";
     return;
   }
 
   data.innerHTML = "";
-  count.innerText = `Total Confessions: ${list.length}`;
 
-  list.forEach(c => {
+  list.forEach(c=>{
     data.innerHTML += `
       <div class="card">
         ${c.message ? `<div class="msg">${escapeHTML(c.message)}</div>` : ""}
 
         ${c.image ? `
           <div class="image">
-            <img src="${c.image}" alt="Confession Image">
+            <img src="${c.image}">
           </div>` : ""
         }
 
@@ -138,22 +163,34 @@ fetch("/admin/confessions")
           🌐 IP: ${c.ip}<br>
           🖥️ ${c.userAgent}
         </div>
+
+        <div class="actions">
+          <button onclick="del('${c._id}')">🗑️ Delete</button>
+        </div>
       </div>
     `;
   });
 })
-.catch(() => {
-  document.getElementById("data").innerText = "❌ Failed to load data";
+.catch(()=>{
+  document.getElementById("data").innerText="❌ Failed to load data";
 });
+
+/* 🗑️ Delete confession */
+function del(id){
+  if(!confirm("Delete this confession?")) return;
+
+  fetch("/admin/confession/"+id,{
+    method:"DELETE",
+    headers:{ Authorization:"Bearer "+token }
+  })
+  .then(()=>location.reload());
+}
 
 /* 🛡️ XSS protection */
 function escapeHTML(str){
-  return str.replace(/[&<>"']/g, m => ({
-    "&":"&amp;",
-    "<":"&lt;",
-    ">":"&gt;",
-    '"':"&quot;",
-    "'":"&#039;"
+  return str.replace(/[&<>"']/g,m=>({
+    "&":"&amp;","<":"&lt;",">":"&gt;",
+    '"':"&quot;","'":"&#039;"
   })[m]);
 }
 </script>

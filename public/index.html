@@ -17,10 +17,18 @@
   <!-- 📸 Image Upload -->
   <label class="upload">
     📷 Upload Photo (optional)
-    <input type="file" id="img" accept="image/*" hidden>
+    <input type="file" id="img" accept="image/*" hidden onchange="previewImage()">
   </label>
 
-  <button onclick="send()">Send Confession</button>
+  <!-- 👀 Image Preview -->
+  <img id="preview" style="
+    display:none;
+    margin-top:10px;
+    width:100%;
+    border-radius:12px;
+  ">
+
+  <button id="btn" onclick="send()">Send Confession</button>
 
   <div class="footer">
     Made with ❤️ for Instagram Confessions
@@ -32,9 +40,28 @@
 </audio>
 
 <script>
+function previewImage(){
+  const file = img.files[0];
+  if(!file) return;
+
+  if(file.size > 5 * 1024 * 1024){
+    alert("Image must be under 5MB ❌");
+    img.value = "";
+    return;
+  }
+
+  const reader = new FileReader();
+  reader.onload = () => {
+    preview.src = reader.result;
+    preview.style.display = "block";
+  };
+  reader.readAsDataURL(file);
+}
+
 function send(){
-  const message = document.getElementById("msg").value.trim();
-  const image = document.getElementById("img").files[0];
+  const message = msg.value.trim();
+  const image = img.files[0];
+  const btn = document.getElementById("btn");
 
   if(!message && !image){
     alert("Write something or upload a photo 😅");
@@ -45,6 +72,8 @@ function send(){
   if(message) formData.append("message", message);
   if(image) formData.append("image", image);
 
+  btn.innerText = "Sending...";
+  btn.disabled = true;
   snd.play();
 
   fetch("/confess",{
@@ -55,7 +84,8 @@ function send(){
   .then(d => {
     if(d.success){
       msg.value = "";
-      document.getElementById("img").value = "";
+      img.value = "";
+      preview.style.display = "none";
       alert("Confession Sent ❤️");
     }else{
       alert(d.error || "Something went wrong ❌");
@@ -63,6 +93,10 @@ function send(){
   })
   .catch(()=>{
     alert("Server error ❌");
+  })
+  .finally(()=>{
+    btn.innerText = "Send Confession";
+    btn.disabled = false;
   });
 }
 

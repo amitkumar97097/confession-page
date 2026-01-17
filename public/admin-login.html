@@ -1,28 +1,61 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <title>Admin Login</title>
+  <meta charset="UTF-8">
+  <title>Admin Panel</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
   <style>
     body{
       background:#020617;
       color:white;
-      display:flex;
-      justify-content:center;
-      align-items:center;
-      height:100vh;
       font-family:Poppins,sans-serif;
+      padding:20px;
     }
 
-    .box{
+    header{
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      margin-bottom:20px;
+    }
+
+    h2{ margin:0; font-weight:600 }
+
+    button{
+      padding:8px 14px;
+      border:none;
+      border-radius:10px;
+      background:#ef4444;
+      color:white;
+      cursor:pointer;
+      font-size:13px;
+    }
+
+    button:hover{ opacity:0.9 }
+
+    .stats{
+      display:flex;
+      gap:12px;
+      margin-bottom:20px;
+      flex-wrap:wrap;
+    }
+
+    .stat{
       background:#0f172a;
-      padding:32px;
-      border-radius:18px;
-      width:340px;
-      box-shadow:0 20px 40px rgba(0,0,0,0.6);
-      animation:fade 0.6s ease;
+      padding:14px 18px;
+      border-radius:14px;
+      box-shadow:0 8px 20px rgba(0,0,0,0.5);
+      font-size:14px;
+    }
+
+    .card{
+      background:#0f172a;
+      padding:16px;
+      border-radius:16px;
+      margin-bottom:14px;
+      box-shadow:0 10px 25px rgba(0,0,0,0.5);
+      animation:fade 0.4s ease;
     }
 
     @keyframes fade{
@@ -30,131 +63,129 @@
       to{opacity:1;transform:translateY(0)}
     }
 
-    h2{
-      text-align:center;
-      margin-bottom:20px;
-      font-weight:600;
-    }
-
-    input{
-      width:100%;
-      padding:12px;
-      border-radius:12px;
-      border:none;
-      margin-bottom:14px;
-      outline:none;
-      background:#020617;
-      color:white;
-      font-size:14px;
-    }
-
-    input::placeholder{ color:#94a3b8 }
-
-    .toggle{
-      font-size:12px;
-      opacity:0.7;
-      cursor:pointer;
-      text-align:right;
-      margin-bottom:12px;
-    }
-
-    button{
-      width:100%;
-      padding:12px;
-      border:none;
-      border-radius:12px;
-      background:#6366f1;
-      color:white;
+    .msg{
       font-size:15px;
+      margin-bottom:8px;
+      line-height:1.5;
+      word-wrap:break-word;
+    }
+
+    img{
+      max-width:100%;
+      border-radius:12px;
+      margin:8px 0;
+    }
+
+    .meta{
+      font-size:11px;
+      opacity:0.65;
+      margin-bottom:8px;
+    }
+
+    .del{
+      background:#dc2626;
+      padding:6px 10px;
+      border-radius:8px;
+      font-size:12px;
       cursor:pointer;
-      font-weight:500;
-    }
-
-    button:disabled{
-      opacity:0.6;
-      cursor:not-allowed;
-    }
-
-    .error{
-      text-align:center;
-      color:#f87171;
-      font-size:13px;
-      margin-top:10px;
-      display:none;
+      border:none;
+      color:white;
     }
   </style>
 </head>
 <body>
 
-<div class="box">
-  <h2>🔐 Admin Login</h2>
+<header>
+  <h2>📊 Admin Dashboard</h2>
+  <button onclick="logout()">Logout</button>
+</header>
 
-  <input id="u" placeholder="Username" autocomplete="off">
-  <input id="p" type="password" placeholder="Password">
-
-  <div class="toggle" onclick="togglePass()">👁️ Show password</div>
-
-  <button id="btn" onclick="login()">Login</button>
-  <div class="error" id="err"></div>
+<div class="stats">
+  <div class="stat" id="total">Total Confessions: ⏳</div>
 </div>
 
+<div id="data">Loading confessions…</div>
+
 <script>
-/* 🔁 Already logged in */
-if(localStorage.getItem("admin")==="true"){
-  location.href="/admin.html";
+/* 🔐 JWT Guard */
+const token = localStorage.getItem("token");
+if(!token){
+  location.href="/admin-login.html";
 }
 
-function togglePass(){
-  const p = document.getElementById("p");
-  p.type = p.type === "password" ? "text" : "password";
+/* 🚪 Logout */
+function logout(){
+  localStorage.removeItem("token");
+  location.href="/admin-login.html";
 }
 
-function login(){
-  const u = document.getElementById("u").value.trim();
-  const p = document.getElementById("p").value.trim();
-  const err = document.getElementById("err");
-  const btn = document.getElementById("btn");
+/* 📊 Load Stats */
+fetch("/admin/stats",{
+  headers:{ Authorization:"Bearer "+token }
+})
+.then(r=>r.json())
+.then(d=>{
+  document.getElementById("total").innerText =
+    "Total Confessions: " + d.total;
+});
 
-  err.style.display = "none";
-
-  if(!u || !p){
-    err.innerText = "All fields required ⚠️";
-    err.style.display = "block";
+/* 📡 Load Confessions */
+fetch("/admin/confessions",{
+  headers:{ Authorization:"Bearer "+token }
+})
+.then(res=>{
+  if(res.status===401 || res.status===403){
+    logout();
+  }
+  return res.json();
+})
+.then(list=>{
+  const data = document.getElementById("data");
+  if(!list.length){
+    data.innerText="No confessions yet 😴";
     return;
   }
 
-  btn.innerText = "Checking...";
-  btn.disabled = true;
+  data.innerHTML="";
+  list.forEach(c=>{
+    data.innerHTML+=`
+      <div class="card">
+        <div class="msg">${escapeHTML(c.message || "")}</div>
 
-  fetch("/admin/login",{
-    method:"POST",
-    headers:{ "Content-Type":"application/json" },
-    body:JSON.stringify({ username:u, password:p })
-  })
-  .then(res=>res.json())
-  .then(d=>{
-    if(d.success){
-      localStorage.setItem("admin","true");
-      location.href="/admin.html";
-    }else{
-      err.innerText = "Wrong credentials ❌";
-      err.style.display = "block";
-    }
-  })
-  .catch(()=>{
-    err.innerText = "Server error ❌";
-    err.style.display = "block";
-  })
-  .finally(()=>{
-    btn.innerText = "Login";
-    btn.disabled = false;
+        ${c.image ? `<img src="${c.image}">` : ""}
+
+        <div class="meta">
+          🕒 ${new Date(c.createdAt).toLocaleString()}<br>
+          🌐 IP: ${c.ip}<br>
+          🖥️ ${c.userAgent}
+        </div>
+
+        <button class="del" onclick="del('${c._id}')">
+          🗑️ Delete
+        </button>
+      </div>
+    `;
   });
+});
+
+/* 🗑️ Delete Confession */
+function del(id){
+  if(!confirm("Delete this confession?")) return;
+
+  fetch("/admin/confession/"+id,{
+    method:"DELETE",
+    headers:{ Authorization:"Bearer "+token }
+  })
+  .then(()=>location.reload());
 }
 
-/* ⌨️ Enter key */
-document.addEventListener("keydown",e=>{
-  if(e.key==="Enter") login();
-});
+/* 🛡️ XSS Protection */
+function escapeHTML(str){
+  return str.replace(/[&<>"']/g,m=>({
+    "&":"&amp;","<":"&lt;",">":"&gt;",
+    '"':"&quot;","'":"&#039;"
+  })[m]);
+}
 </script>
 
 </body>
