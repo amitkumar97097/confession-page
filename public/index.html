@@ -40,6 +40,8 @@
 </audio>
 
 <script>
+const API = "https://confession-page-7yg9.onrender.com"; // ✅ BACKEND URL
+
 function previewImage(){
   const file = img.files[0];
   if(!file) return;
@@ -70,13 +72,13 @@ function send(){
 
   const formData = new FormData();
   if(message) formData.append("message", message);
-  if(image) formData.append("photo", image); // ✅ FIXED
+  if(image) formData.append("photo", image); // ✅ multer field
 
   btn.innerText = "Sending...";
   btn.disabled = true;
   snd.play();
 
-  fetch("/confess",{
+  fetch(`${API}/confess`,{
     method:"POST",
     body: formData
   })
