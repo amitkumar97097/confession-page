@@ -1,7 +1,10 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+  <meta charset="UTF-8" />
   <title>Admin Login</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
   <style>
     body{
       background:#020617;
@@ -12,37 +15,72 @@
       height:100vh;
       font-family:Poppins,sans-serif;
     }
+
     .box{
-      background:#1e293b;
-      padding:30px;
-      border-radius:16px;
-      width:320px;
-      box-shadow:0 10px 30px rgba(0,0,0,0.4);
+      background:#0f172a;
+      padding:32px;
+      border-radius:18px;
+      width:340px;
+      box-shadow:0 20px 40px rgba(0,0,0,0.6);
+      animation:fade 0.6s ease;
     }
+
+    @keyframes fade{
+      from{opacity:0;transform:translateY(10px)}
+      to{opacity:1;transform:translateY(0)}
+    }
+
     h2{
       text-align:center;
-      margin-bottom:15px;
+      margin-bottom:20px;
+      font-weight:600;
     }
+
     input{
       width:100%;
-      padding:10px;
-      border-radius:10px;
+      padding:12px;
+      border-radius:12px;
       border:none;
-      margin-bottom:12px;
+      margin-bottom:14px;
       outline:none;
+      background:#020617;
+      color:white;
+      font-size:14px;
     }
+
+    input::placeholder{ color:#94a3b8 }
+
+    .toggle{
+      font-size:12px;
+      opacity:0.7;
+      cursor:pointer;
+      text-align:right;
+      margin-bottom:12px;
+    }
+
     button{
       width:100%;
-      padding:10px;
+      padding:12px;
       border:none;
-      border-radius:10px;
+      border-radius:12px;
       background:#6366f1;
       color:white;
       font-size:15px;
       cursor:pointer;
+      font-weight:500;
     }
-    button:hover{
-      opacity:0.9;
+
+    button:disabled{
+      opacity:0.6;
+      cursor:not-allowed;
+    }
+
+    .error{
+      text-align:center;
+      color:#f87171;
+      font-size:13px;
+      margin-top:10px;
+      display:none;
     }
   </style>
 </head>
@@ -50,34 +88,73 @@
 
 <div class="box">
   <h2>🔐 Admin Login</h2>
-  <input id="u" placeholder="Username">
+
+  <input id="u" placeholder="Username" autocomplete="off">
   <input id="p" type="password" placeholder="Password">
-  <button onclick="login()">Login</button>
+
+  <div class="toggle" onclick="togglePass()">👁️ Show password</div>
+
+  <button id="btn" onclick="login()">Login</button>
+  <div class="error" id="err"></div>
 </div>
 
 <script>
-function login() {
-  fetch("/admin/login", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      username: document.getElementById("u").value,
-      password: document.getElementById("p").value
-    })
+/* 🔁 Already logged in */
+if(localStorage.getItem("admin")==="true"){
+  location.href="/admin.html";
+}
+
+function togglePass(){
+  const p = document.getElementById("p");
+  p.type = p.type === "password" ? "text" : "password";
+}
+
+function login(){
+  const u = document.getElementById("u").value.trim();
+  const p = document.getElementById("p").value.trim();
+  const err = document.getElementById("err");
+  const btn = document.getElementById("btn");
+
+  err.style.display = "none";
+
+  if(!u || !p){
+    err.innerText = "All fields required ⚠️";
+    err.style.display = "block";
+    return;
+  }
+
+  btn.innerText = "Checking...";
+  btn.disabled = true;
+
+  fetch("/admin/login",{
+    method:"POST",
+    headers:{ "Content-Type":"application/json" },
+    body:JSON.stringify({ username:u, password:p })
   })
-  .then(res => res.json())
-  .then(d => {
-    if (d.success) {
-      localStorage.setItem("admin", "true");
-      location.href = "/admin.html";
-    } else {
-      alert("Wrong credentials ❌");
+  .then(res=>res.json())
+  .then(d=>{
+    if(d.success){
+      localStorage.setItem("admin","true");
+      location.href="/admin.html";
+    }else{
+      err.innerText = "Wrong credentials ❌";
+      err.style.display = "block";
     }
   })
-  .catch(() => {
-    alert("Server error ❌");
+  .catch(()=>{
+    err.innerText = "Server error ❌";
+    err.style.display = "block";
+  })
+  .finally(()=>{
+    btn.innerText = "Login";
+    btn.disabled = false;
   });
 }
+
+/* ⌨️ Enter key */
+document.addEventListener("keydown",e=>{
+  if(e.key==="Enter") login();
+});
 </script>
 
 </body>

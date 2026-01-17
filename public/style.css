@@ -38,6 +38,8 @@ body {
   100% {background-position: 0% 50%;}
 }
 
+/* ================= CARD ================= */
+
 .container {
   width: 92%;
   max-width: 420px;
@@ -62,10 +64,12 @@ h2 {
 .logo {
   text-align: center;
   font-weight: 600;
-  margin-bottom: 10px;
+  margin-bottom: 12px;
   font-size: 14px;
   opacity: 0.85;
 }
+
+/* ================= TEXTAREA ================= */
 
 textarea {
   width: 100%;
@@ -76,11 +80,40 @@ textarea {
   resize: none;
   outline: none;
   font-size: 14px;
+  margin-bottom: 10px;
 }
+
+/* ================= IMAGE UPLOAD ================= */
+
+.upload {
+  display: block;
+  text-align: center;
+  padding: 10px;
+  border-radius: 14px;
+  background: rgba(255,255,255,0.15);
+  font-size: 13px;
+  cursor: pointer;
+  transition: 0.3s;
+  margin-bottom: 12px;
+}
+
+.upload:hover {
+  background: rgba(255,255,255,0.25);
+}
+
+/* Image preview */
+.preview {
+  width: 100%;
+  margin-top: 10px;
+  border-radius: 14px;
+  display: none;
+}
+
+/* ================= BUTTON ================= */
 
 button {
   width: 100%;
-  margin-top: 15px;
+  margin-top: 8px;
   padding: 12px;
   border: none;
   border-radius: 14px;
@@ -95,6 +128,8 @@ button {
 button:hover {
   transform: scale(1.04);
 }
+
+/* ================= MISC ================= */
 
 .toggle {
   text-align: right;

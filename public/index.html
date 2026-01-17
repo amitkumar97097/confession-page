@@ -12,7 +12,14 @@
   <h2>💌 Confession Box</h2>
   <div class="logo">Anonymous • Safe • Private</div>
 
-  <textarea id="msg" placeholder="Type your confession here..."></textarea>
+  <textarea id="msg" placeholder="Type your confession or love letter here..."></textarea>
+
+  <!-- 📸 Image Upload -->
+  <label class="upload">
+    📷 Upload Photo (optional)
+    <input type="file" id="img" accept="image/*" hidden>
+  </label>
+
   <button onclick="send()">Send Confession</button>
 
   <div class="footer">
@@ -26,19 +33,36 @@
 
 <script>
 function send(){
-  if(!msg.value.trim()){
-    alert("Write something 😅");
+  const message = document.getElementById("msg").value.trim();
+  const image = document.getElementById("img").files[0];
+
+  if(!message && !image){
+    alert("Write something or upload a photo 😅");
     return;
   }
+
+  const formData = new FormData();
+  if(message) formData.append("message", message);
+  if(image) formData.append("image", image);
+
   snd.play();
+
   fetch("/confess",{
     method:"POST",
-    headers:{ "Content-Type":"application/json" },
-    body: JSON.stringify({ message: msg.value })
+    body: formData
   })
-  .then(()=>{
-    msg.value="";
-    alert("Confession Sent ❤️");
+  .then(res => res.json())
+  .then(d => {
+    if(d.success){
+      msg.value = "";
+      document.getElementById("img").value = "";
+      alert("Confession Sent ❤️");
+    }else{
+      alert(d.error || "Something went wrong ❌");
+    }
+  })
+  .catch(()=>{
+    alert("Server error ❌");
   });
 }
 

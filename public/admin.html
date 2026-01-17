@@ -1,53 +1,161 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+  <meta charset="UTF-8">
   <title>Admin Panel</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
   <style>
-    body {
+    body{
       background:#020617;
       color:white;
       font-family:Poppins,sans-serif;
       padding:20px;
     }
-    h2{text-align:center;}
-    .card{
-      background:#1e293b;
-      padding:15px;
-      border-radius:16px;
-      margin-bottom:15px;
-      box-shadow:0 8px 20px rgba(0,0,0,0.4);
-      animation:fade 0.6s ease;
+
+    header{
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      margin-bottom:20px;
     }
+
+    h2{margin:0;font-weight:600}
+
+    button{
+      padding:8px 14px;
+      border:none;
+      border-radius:10px;
+      background:#ef4444;
+      color:white;
+      cursor:pointer;
+      font-size:13px;
+    }
+
+    .count{
+      text-align:center;
+      margin-bottom:15px;
+      font-size:13px;
+      opacity:0.7;
+    }
+
+    .card{
+      background:#0f172a;
+      padding:16px;
+      border-radius:16px;
+      margin-bottom:14px;
+      box-shadow:0 10px 25px rgba(0,0,0,0.5);
+      animation:fade 0.5s ease;
+    }
+
     @keyframes fade{
-      from{opacity:0;transform:translateY(20px)}
+      from{opacity:0;transform:translateY(15px)}
       to{opacity:1;transform:translateY(0)}
     }
-    .msg{font-size:15px;margin-bottom:6px}
-    .meta{font-size:11px;opacity:0.7}
+
+    .msg{
+      font-size:15px;
+      margin-bottom:10px;
+      line-height:1.5;
+      word-wrap:break-word;
+    }
+
+    .image{
+      margin:10px 0;
+      text-align:center;
+    }
+
+    .image img{
+      max-width:100%;
+      border-radius:14px;
+      box-shadow:0 8px 20px rgba(0,0,0,0.6);
+    }
+
+    .meta{
+      font-size:11px;
+      opacity:0.65;
+      margin-top:8px;
+    }
+
+    .loading{
+      text-align:center;
+      opacity:0.7;
+      margin-top:40px;
+    }
   </style>
 </head>
 <body>
 
-<h2>📊 Admin Confessions</h2>
-<div id="data"></div>
+<header>
+  <h2>📊 Admin Confessions</h2>
+  <button onclick="logout()">Logout</button>
+</header>
+
+<div class="count" id="count">Loading confessions...</div>
+<div id="data" class="loading">⏳ Fetching data...</div>
 
 <script>
+/* 🔐 Login guard */
+if(localStorage.getItem("admin") !== "true"){
+  location.href = "/admin-login.html";
+}
+
+/* 🚪 Logout */
+function logout(){
+  localStorage.removeItem("admin");
+  location.href = "/admin-login.html";
+}
+
+/* 📡 Fetch confessions */
 fetch("/admin/confessions")
-.then(res=>res.json())
-.then(list=>{
-  list.forEach(c=>{
-    data.innerHTML+=`
+.then(res => res.json())
+.then(list => {
+  const data = document.getElementById("data");
+  const count = document.getElementById("count");
+
+  if(!list.length){
+    data.innerHTML = "No confessions yet 😴";
+    count.innerText = "Total: 0";
+    return;
+  }
+
+  data.innerHTML = "";
+  count.innerText = `Total Confessions: ${list.length}`;
+
+  list.forEach(c => {
+    data.innerHTML += `
       <div class="card">
-        <div class="msg">${c.message}</div>
+        ${c.message ? `<div class="msg">${escapeHTML(c.message)}</div>` : ""}
+
+        ${c.image ? `
+          <div class="image">
+            <img src="${c.image}" alt="Confession Image">
+          </div>` : ""
+        }
+
         <div class="meta">
-          ${new Date(c.createdAt).toLocaleString()}<br>
-          IP: ${c.ip}<br>
-          ${c.userAgent}
+          🕒 ${new Date(c.createdAt).toLocaleString()}<br>
+          🌐 IP: ${c.ip}<br>
+          🖥️ ${c.userAgent}
         </div>
       </div>
-    `
-  })
+    `;
+  });
 })
+.catch(() => {
+  document.getElementById("data").innerText = "❌ Failed to load data";
+});
+
+/* 🛡️ XSS protection */
+function escapeHTML(str){
+  return str.replace(/[&<>"']/g, m => ({
+    "&":"&amp;",
+    "<":"&lt;",
+    ">":"&gt;",
+    '"':"&quot;",
+    "'":"&#039;"
+  })[m]);
+}
 </script>
 
 </body>

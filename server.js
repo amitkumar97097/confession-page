@@ -7,8 +7,8 @@ const Confession = require("./models/Confession");
 const app = express();
 
 /* ================= ADMIN CREDENTIALS ================= */
-const ADMIN_USER = "admin";
-const ADMIN_PASS = "admin12345";
+const ADMIN_USER = process.env.ADMIN_USER;
+const ADMIN_PASS = process.env.ADMIN_PASS;
 /* ===================================================== */
 
 /* 🚫 Bad words list */
@@ -22,30 +22,34 @@ app.use(cors());
 app.use(express.json());
 app.use(express.static("public"));
 
-/* 🔍 DEBUG: env check */
-console.log("MONGO_URI =", process.env.MONGO_URI);
-
+/* 🔍 ENV CHECK */
 if (!process.env.MONGO_URI) {
-  console.error("❌ ERROR: MONGO_URI is undefined");
+  console.error("❌ MONGO_URI missing");
   process.exit(1);
 }
 
-/* 🔗 MongoDB connection */
-mongoose
-  .connect(process.env.MONGO_URI)
-  .then(() => console.log("MongoDB Connected"))
+/* 🔗 MongoDB */
+mongoose.connect(process.env.MONGO_URI)
+  .then(() => console.log("✅ MongoDB Connected"))
   .catch(err => {
-    console.error("❌ MongoDB Connection Error:", err.message);
+    console.error("❌ Mongo Error:", err.message);
     process.exit(1);
   });
 
 /* ================= USER CONFESSION ================= */
 app.post("/confess", async (req, res) => {
-  const msg = req.body.message?.toLowerCase() || "";
+  const msg = req.body.message?.trim();
 
-  // 🚫 Abuse filter
+  if (!msg) {
+    return res.status(400).json({
+      success: false,
+      error: "Message cannot be empty"
+    });
+  }
+
+  const lower = msg.toLowerCase();
   for (let word of badWords) {
-    if (msg.includes(word)) {
+    if (lower.includes(word)) {
       return res.status(400).json({
         success: false,
         error: "Abusive language detected 🚫"
@@ -54,38 +58,50 @@ app.post("/confess", async (req, res) => {
   }
 
   try {
-    const confession = new Confession({
-      message: req.body.message,
+    await Confession.create({
+      message: msg,
       ip: req.ip,
       userAgent: req.headers["user-agent"]
     });
-    await confession.save();
     res.json({ success: true });
   } catch {
     res.status(500).json({ success: false });
   }
 });
 
-/* ================= ADMIN LOGIN API ================= */
+/* ================= ADMIN LOGIN ================= */
 app.post("/admin/login", (req, res) => {
   const { username, password } = req.body;
 
   if (username === ADMIN_USER && password === ADMIN_PASS) {
     return res.json({ success: true });
   }
-
   res.json({ success: false });
 });
 
-/* ================= ADMIN DATA API ================= */
-app.get("/admin/confessions", async (req, res) => {
+/* ================= ADMIN AUTH MIDDLEWARE ================= */
+function adminAuth(req, res, next) {
+  const auth = req.headers.authorization;
+  if (!auth) return res.status(401).send("Unauthorized");
+
+  const decoded = Buffer.from(auth.split(" ")[1], "base64")
+    .toString()
+    .split(":");
+
+  if (decoded[0] !== ADMIN_USER || decoded[1] !== ADMIN_PASS) {
+    return res.status(403).send("Forbidden");
+  }
+  next();
+}
+
+/* ================= ADMIN DATA ================= */
+app.get("/admin/confessions", adminAuth, async (req, res) => {
   const data = await Confession.find().sort({ createdAt: -1 });
   res.json(data);
 });
 
 /* ================= SERVER ================= */
 const PORT = process.env.PORT || 10000;
-
 app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+  console.log(`🚀 Server running on port ${PORT}`);
 });
