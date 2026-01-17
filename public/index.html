@@ -70,7 +70,7 @@ function send(){
 
   const formData = new FormData();
   if(message) formData.append("message", message);
-  if(image) formData.append("image", image);
+  if(image) formData.append("photo", image); // ✅ FIXED
 
   btn.innerText = "Sending...";
   btn.disabled = true;
