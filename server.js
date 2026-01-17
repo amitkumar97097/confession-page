@@ -4,18 +4,23 @@ const cors = require("cors");
 const multer = require("multer");
 const jwt = require("jsonwebtoken");
 const path = require("path");
+const fs = require("fs");
 require("dotenv").config();
 
 const Confession = require("./models/Confession");
 const app = express();
 
-/* ================= CONFIG ================= */
-const ADMIN_USER = process.env.ADMIN_USER;
-const ADMIN_PASS = process.env.ADMIN_PASS;
-const JWT_SECRET = process.env.JWT_SECRET;
+/* ================= ENV CONFIG ================= */
+const {
+  ADMIN_USER,
+  ADMIN_PASS,
+  JWT_SECRET,
+  MONGO_URI,
+  PORT = 10000
+} = process.env;
 
-if (!ADMIN_USER || !ADMIN_PASS || !JWT_SECRET) {
-  console.error("❌ ADMIN ENV missing");
+if (!ADMIN_USER || !ADMIN_PASS || !JWT_SECRET || !MONGO_URI) {
+  console.error("❌ Missing ENV variables");
   process.exit(1);
 }
 
@@ -30,11 +35,17 @@ const badWords = [
 app.use(cors());
 app.use(express.json());
 app.use(express.static("public"));
-app.use("/uploads", express.static("uploads"));
 
-/* ================= MULTER (DISK STORAGE) ================= */
+/* ================= UPLOADS FOLDER ================= */
+const uploadDir = path.join(__dirname, "uploads");
+if (!fs.existsSync(uploadDir)) {
+  fs.mkdirSync(uploadDir);
+}
+app.use("/uploads", express.static(uploadDir));
+
+/* ================= MULTER CONFIG ================= */
 const storage = multer.diskStorage({
-  destination: "uploads/",
+  destination: uploadDir,
   filename: (_, file, cb) => {
     cb(null, Date.now() + path.extname(file.originalname));
   }
@@ -42,16 +53,19 @@ const storage = multer.diskStorage({
 
 const upload = multer({
   storage,
-  limits: { fileSize: 5 * 1024 * 1024 } // 5MB
+  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB
+  fileFilter: (_, file, cb) => {
+    const allowed = /jpg|jpeg|png|webp/;
+    const ext = path.extname(file.originalname).toLowerCase();
+    if (!allowed.test(ext)) {
+      return cb(new Error("Only images allowed"));
+    }
+    cb(null, true);
+  }
 });
 
 /* ================= MONGODB ================= */
-if (!process.env.MONGO_URI) {
-  console.error("❌ MONGO_URI missing");
-  process.exit(1);
-}
-
-mongoose.connect(process.env.MONGO_URI)
+mongoose.connect(MONGO_URI)
   .then(() => console.log("✅ MongoDB Connected"))
   .catch(err => {
     console.error("❌ Mongo Error:", err.message);
@@ -61,16 +75,16 @@ mongoose.connect(process.env.MONGO_URI)
 /* ================= JWT AUTH ================= */
 function adminAuth(req, res, next) {
   const header = req.headers.authorization;
-  if (!header) return res.status(401).json({ error: "No token" });
+  if (!header) {
+    return res.status(401).json({ error: "Token missing" });
+  }
 
   const token = header.split(" ")[1];
-  if (!token) return res.status(401).json({ error: "Invalid token format" });
-
   try {
     jwt.verify(token, JWT_SECRET);
     next();
   } catch {
-    res.status(403).json({ error: "Invalid / expired token" });
+    return res.status(403).json({ error: "Invalid or expired token" });
   }
 }
 
@@ -150,7 +164,6 @@ app.get("/admin/stats", adminAuth, async (_, res) => {
 });
 
 /* ================= SERVER ================= */
-const PORT = process.env.PORT || 10000;
 app.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
 });
